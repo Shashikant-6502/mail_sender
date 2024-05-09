@@ -3,6 +3,7 @@ import smtplib
 import streamlit as st
 from email.message import EmailMessage
 import imghdr
+import speech_recognition as sr
 
 EMAIL_ADDRESS = os.environ.get("EMAIL_USER")
 EMAIL_PASSWORD = os.environ.get("EMAIL_PASS")
@@ -28,7 +29,30 @@ default_body_templates = [
 selected_template_index = st.selectbox("Select Email Body Template:", options=list(range(len(default_body_templates))), index=0)
 body_template = default_body_templates[selected_template_index]
 
-body = st.text_area("Body:", value=body_template)
+# Function to convert speech to text using SpeechRecognition library
+def speech_to_text():
+    recognizer = sr.Recognizer()
+    with sr.Microphone() as source:
+        st.write("Speak now...")
+        audio_data = recognizer.listen(source)
+        st.write("Processing...")
+        try:
+            text = recognizer.recognize_google(audio_data)
+            return text
+        except sr.UnknownValueError:
+            st.error("Sorry, I could not understand your speech.")
+            return ""
+        except sr.RequestError:
+            st.error("Sorry, could not request results. Please check your internet connection.")
+            return ""
+
+# Use speech-to-text functionality to input the email body
+use_speech_input = st.checkbox("Use Speech Input for Body")
+if use_speech_input:
+    body = speech_to_text()
+    st.text_area("Body:", value=body, height=200)
+else:
+    body = st.text_area("Body:", value=body_template, height=200)
 
 num_attachments = st.number_input("Number of Attachments:", min_value=0, step=1, value=0)
 
@@ -68,3 +92,4 @@ if st.button("Send Email"):
             smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
             smtp.send_message(msg)
     st.success("Email(s) sent successfully!")
+    
